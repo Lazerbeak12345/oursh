@@ -5,6 +5,7 @@ use std::{
 };
 use nix::sys::wait::WaitStatus;
 use crate::{
+    config::Config,
     job::Job,
     program::{Result, Error},
 };
@@ -45,7 +46,7 @@ pub struct Command(String);
 
 impl super::Command for Command {
     /// Treat each space blindly as an argument delimiter.
-    fn run(&self) -> Result<WaitStatus> {
+    fn run(&self, config: &Config) -> Result<WaitStatus> {
         let mut job = Job::new(self.0.split_whitespace().map(|a| {
             CString::new(a).expect("error reading argument")
         }).collect());

@@ -126,6 +126,7 @@ use nix::{
     unistd::Pid,
 };
 use crate::{
+    config::Config,
     job::Job,
     program::{Result, Error, Program as ProgramTrait},
 };
@@ -201,7 +202,7 @@ impl super::Program for Program {
 
 // The semantics of a single POSIX command.
 impl super::Command for Command {
-    fn run(&self) -> Result<WaitStatus> {
+    fn run(&self, config: &Config) -> Result<WaitStatus> {
         #[allow(unreachable_patterns)]
         match *self {
             Command::Simple(ref words) => {
@@ -233,12 +234,12 @@ impl super::Command for Command {
             Command::Compound(ref commands) => {
                 let mut last = WaitStatus::Exited(Pid::this(), 0);
                 for command in commands.iter() {
-                    last = command.run()?;
+                    last = command.run(config)?;
                 }
                 Ok(last)
             },
             Command::Not(ref command) => {
-                match command.run() {
+                match command.run(config) {
                     Ok(WaitStatus::Exited(p, c)) => {
                         Ok(WaitStatus::Exited(p, (c == 0) as i32))
                     }
@@ -247,18 +248,18 @@ impl super::Command for Command {
                 }
             },
             Command::And(ref left, ref right) => {
-                match left.run() {
+                match left.run(config) {
                     Ok(WaitStatus::Exited(_, c)) if c == 0 => {
-                        right.run().map_err(|_| Error::Runtime)
+                        right.run(config).map_err(|_| Error::Runtime)
                     },
                     Ok(s) => Ok(s),
                     Err(_) => Err(Error::Runtime),
                 }
             },
             Command::Or(ref left, ref right) => {
-                match left.run() {
+                match left.run(config) {
                     Ok(WaitStatus::Exited(_, c)) if c != 0 => {
-                        right.run().map_err(|_| Error::Runtime)
+                        right.run(config).map_err(|_| Error::Runtime)
                     },
                     Ok(s) => Ok(s),
                     Err(_) => Err(Error::Runtime),
@@ -266,7 +267,7 @@ impl super::Command for Command {
             },
             Command::Subshell(ref program) => {
                 // TODO #4: Run in a *subshell* ffs.
-                program.run()
+                program.run(config)
             },
             Command::Pipeline(ref left, ref right) => {
                 // TODO: This is obviously a temporary hack.
@@ -304,9 +305,10 @@ impl super::Command for Command {
                 println!("[?] ???");
 
                 // TODO: Track background jobs.
+                let config = config.clone();
                 let command = command.clone();
                 thread::spawn(move || {
-                    command.run().unwrap();
+                    command.run(&config).unwrap();
                 });
                 Ok(WaitStatus::Exited(Pid::this(), 0))
             },

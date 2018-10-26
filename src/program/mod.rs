@@ -68,6 +68,7 @@ use nix::{
     unistd::Pid,
     sys::wait::WaitStatus,
 };
+use crate::config::Config;
 
 /// Convenience type for results with program errors.
 pub type Result<T> = result::Result<T, Error>;
@@ -109,10 +110,10 @@ pub trait Program: Sized + Debug {
     fn commands(&self) -> &[Box<Self::Command>];
 
     /// Run the program sequentially.
-    fn run(&self) -> Result<WaitStatus> {
+    fn run(&self, config: &Config) -> Result<WaitStatus> {
         let mut last = WaitStatus::Exited(Pid::this(), 0);
         for command in self.commands().iter() {
-            last = command.run()?;
+            last = command.run(config)?;
         }
         Ok(last)
     }
@@ -129,7 +130,7 @@ pub trait Program: Sized + Debug {
 //          sane to try this with ENV too?
 pub trait Command: Sized + Debug {
     /// Run the command, returning a result of it's work.
-    fn run(&self) -> Result<WaitStatus>;
+    fn run(&self, config: &Config) -> Result<WaitStatus>;
 
     /// Return the name of this command.
     ///

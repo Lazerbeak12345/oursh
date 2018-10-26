@@ -13,6 +13,7 @@ use docopt::{Docopt, ArgvMap, Value};
 use termion::is_tty;
 use oursh::{
     repl,
+    config::Config,
     program::{
         parse_primary, parse_alternate,
         Result, Error,
@@ -88,6 +89,8 @@ fn main() -> Result<()> {
 
 fn parse_and_run<'a>(args: &'a ArgvMap) -> impl Fn(&String) -> Result<()> + 'a {
     move |text: &String| {
+        let config = Config::default();
+
         // Parse with the primary grammar and run each command in order.
         if args.get_bool("--alternate") {
             let program = match parse_alternate(text.as_bytes()) {
@@ -104,7 +107,7 @@ fn parse_and_run<'a>(args: &'a ArgvMap) -> impl Fn(&String) -> Result<()> + 'a {
             }
 
             // Run it!
-            program.run().map(|_| ())
+            program.run(&config).map(|_| ())
         } else {
             let program = match parse_primary(text.as_bytes()) {
                 Ok(program) => program,
@@ -120,7 +123,7 @@ fn parse_and_run<'a>(args: &'a ArgvMap) -> impl Fn(&String) -> Result<()> + 'a {
             }
 
             // Run it!
-            program.run().map(|_| ())
+            program.run(&config).map(|_| ())
         }
     }
 }

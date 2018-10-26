@@ -116,6 +116,7 @@ macro_rules! debug {
     };
 }
 
+pub mod config;
 pub mod job;
 pub mod program;
 pub mod repl;
